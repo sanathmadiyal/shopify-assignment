@@ -1,1 +1,1 @@
-# shopify-assignment
+# I have developed a product page featuring a custom section with blocks, incorporating dynamic data sources such as Shopify collections, custom Liquid code utilizing if statements, switch statements, and API calls. The product page is designed using Vue.js, and it seamlessly updates the cart. My primary focus was on crafting an engaging product page, with less emphasis on the design of the home page

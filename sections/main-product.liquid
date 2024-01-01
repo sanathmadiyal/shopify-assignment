@@ -1,0 +1,346 @@
+{% schema %}
+{
+  "name": "Product Name",
+  "tag": "section",
+  "class": "section",
+  "blocks": [
+    {
+      "type": "title",
+      "name": "title",
+      "limit": 1
+    },
+    {
+      "type": "price",
+      "name": "price",
+      "limit": 1
+    },
+    {
+      "type": "sku",
+      "name": "sku",
+      "limit": 1,
+      "settings": [
+        {
+          "type": "select",
+          "id": "text_style",
+          "options": [
+            {
+              "value": "body",
+              "label": "option1"
+            },
+            {
+              "value": "subtitle",
+              "label": "option2"
+            },
+            {
+              "value": "uppercase",
+              "label": "option3"
+            }
+          ],
+          "default": "body",
+          "label": "body"
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}
+
+<!-- Add meta description to the head if available -->
+<head>
+  {% if product.metafields.global.product_meta_description %}
+    <meta name="description" content="{{ product.metafields.global.product_meta_description | escape }}">
+  {% endif %}
+</head>
+
+<!-- Include Vue.js library -->
+<script src="https://cdn.jsdelivr.net/npm/vue@3"></script>
+
+<!-- Render the product data in a data attribute -->
+{% capture blockValues %}
+  {%- for block in section.blocks -%}
+    {{ block.title }}
+    {{ block.price }}
+    {{ block.sku }}
+  {%- endfor -%}
+{% endcapture %}
+
+{% assign productData = product | json %}
+{% assign sectionData = blockValues | json %}
+{% assign productVariants = product.variants | json %}
+
+<div id="app">
+  <!-- Display success or error message -->
+  <div v-if="message" :class="{ 'success-message': isSuccess, 'error-message': !isSuccess }" v-text="message"></div>
+  
+  <div class="main-product-section">
+    <div class="product-grid">
+      <!-- Product images section -->
+      <div class="product-grid__images">
+        <div class="product-images">
+          <div v-if="selectedImageUrl">
+            <img :src="selectedImageUrl" alt="Selected Variant Image" width="100%;" height="200%">
+          </div>
+        </div>
+      </div>
+
+      <!-- Product details section -->
+      <div class="product-grid__detail">
+        {%- for block in section.blocks -%}
+          {%- case block.type -%}
+            {%- when 'title' -%}
+              <!-- Product title -->
+              <div class="product__title" {{ block.shopify_attributes }}>
+                <h2 class="h1">
+                  {{ product.title | escape }}
+                </h2>
+              </div>
+            
+            {%- when 'sku' -%}
+              <!-- Product SKU -->
+              <p
+                class="product__sku no-js-hidden{% if block.settings.text_style == 'uppercase' %} caption-with-letter-spacing{% elsif block.settings.text_style == 'subtitle' %} subtitle{% endif %}{% if product.selected_or_first_available_variant.sku.size == 0 %} visibility-hidden{% endif %}"
+                id="Sku-{{ section.id }}"
+                role="status"
+                {{ block.shopify_attributes }}
+              >
+                <span class="visually-hidden">{{ 'products.product.sku' | t }}:</span> {{- product.selected_or_first_available_variant.sku -}}
+              </p>
+          {% endcase %}
+        {% endfor %}
+        
+        <!-- Product options -->
+        <div class="main-div">
+          <div class="option-selector__btns" v-for="variant in productVariants">
+            <div class="productSizeOption"> 
+              <div class="opt-label" v-text="variant.title" @click="setSelectedOption(variant.id, variant.featured_image)"></div>
+            </div>
+          </div>
+        </div>
+        
+        {%- for block in section.blocks -%}
+          {%- case block.type -%}
+            {%- when 'price' -%}
+              <!-- Product price -->
+              <div class="no-js-hidden" id="price-{{ section.id }}" role="status" {{ block.shopify_attributes }}>
+                {%- render 'price',
+                  product: product,
+                  use_variant: true,
+                  show_badges: true,
+                  price_class: 'price--large'
+                -%}
+              </div>
+          {% endcase %}
+        {% endfor %}
+        
+        <!-- Quantity input and Add to Cart button -->
+        <div class="quantity-input">
+          <button @click="decreaseQuantity">-</button>
+          <input class="quantity" type="number" min="1" v-model="quantity">
+          <button @click="increaseQuantity">+</button>
+        </div>
+        <button class="button" @click="addToCart">Add to Cart</button>
+        <!-- meta description added in product page -->
+        <div> 
+          {{ product.metafields.custom.product_meta_description }}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  window.productData = {{ productData | json }};
+  window.sectionData = {{ sectionData | json }};
+  window.productVariants = {{ productVariants | json }};
+
+  const app = Vue.createApp({
+    data() {
+      return {
+        items: [],
+        sectionData: [],
+        productVariants: [],
+        selectedOption: '',
+        selectedImageUrl: '',
+        quantity: 1,
+        message: '',
+        isSuccess: true,
+        cartData: {},
+      };
+    },
+    created() {
+      this.items = JSON.parse(window.productData);
+      this.sectionData = JSON.parse(window.sectionData);
+      this.productVariants = JSON.parse(window.productVariants);
+      this.setDefaultImage();
+      this.fetchCartData();
+    },
+    methods: {
+      // Set default image if available
+      setDefaultImage() {
+        let src = '';
+        for (const product of this.productVariants) {
+          if (product.featured_image && product.featured_image.src) {
+            src = product.featured_image.src;
+            break;
+          }
+        }
+        if (src) {
+          this.selectedImageUrl = src;
+        } else {
+          this.showMessage('Please Upload Product Image!', false);
+        }
+      },
+      
+      // Set selected option and image
+      setSelectedOption(optionId, featuredImage) {
+        this.selectedOption = optionId;
+        this.selectedImageUrl = '';
+        if (featuredImage !== null) {
+          this.selectedImageUrl = featuredImage.src;
+        }
+      },
+      
+      // Add to Cart functionality
+      addToCart() {
+        const selectedVariant = this.selectedOption;
+        if (selectedVariant) {
+          const variantId = selectedVariant;
+          const selectedQuantity = this.quantity;
+          this.addToCartFunction(variantId, selectedQuantity);
+        }
+      },
+      
+      // Display success or error message
+      showMessage(message, isSuccess) {
+        this.message = message;
+        this.isSuccess = isSuccess;
+    
+        setTimeout(() => {
+          this.message = '';
+        }, 5000);
+      },
+      
+      // Increase quantity
+      increaseQuantity() {
+        this.quantity++;
+      },
+      
+      // Decrease quantity
+      decreaseQuantity() {
+        if (this.quantity > 1) {
+          this.quantity--;
+        }
+      },
+      
+      // Add item to cart and fetch cart data
+      addToCartFunction(variantId, quantity) {
+        let productCount = 0;
+        const formData = {
+          items: [
+            {
+              id: variantId,
+              quantity: quantity,
+            },
+          ],
+        };
+
+        fetch(window.Shopify.routes.root + 'cart/add.js', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData),
+        }).then(response => {
+          if (!response.ok) {
+            this.showMessage(`Please Configure Product stock quantity`, false);
+            throw new Error(`Failed to add to cart. Status: ${response.status}`);
+          }
+          return response.json();
+        }).then((data) => {
+           this.fetchCartData();
+          console.log('Added to cart:', data);
+          this.showMessage('Added to cart:', true);
+        }).catch((error) => {
+          this.showMessage(`Failed to add to cart. Status: ${response.status}`, false);
+          this.showMessage('Failed to add to cart. Status.', false);
+          console.error('Error:', error);
+        });
+      },
+      
+      // Fetch cart data
+      fetchCartData() {
+        fetch(window.Shopify.routes.root + 'cart.js', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }).then((response) => {
+          return response.json();
+        }).then((data) => {
+          // Handle the response data
+          console.log('Cart Data:', data);
+          document.getElementById('productCount').innerText = data.item_count;
+        }).catch((error) => {
+          console.error('Error fetching cart data:', error);
+        });
+      },
+    },
+  });
+
+  app.mount('#app');
+</script>
+
+<style>
+  /* Add your custom styles here */
+  .quantity-input {
+    display: flex;
+    align-items: center;
+    padding-top: 1em;
+    padding-bottom: 1em;
+  }
+
+  .product__title {
+    padding-top: 1em;
+    font-weight: bolder;
+  }
+  
+  .quantity-input button {
+    cursor: pointer;
+    padding: 5px 10px;
+    border: 1px solid #ccc;
+    background-color: #f9f9f9;
+  }
+  .quantity-input input {
+    width: 70px;
+    text-align: center;
+    margin: 0 10px;
+    border: 1px solid #ccc;
+    height: 24px;
+    margin-left: 2px;
+    margin-right: 2px;
+  }
+  .product-gradient {
+    width: 50%;
+    padding-left: 2em;
+    border: 1em;
+    border-color: black;
+  }
+  .success-message {
+    color: green;
+    font-weight: bold;
+    margin-top: 10px;
+    width: 100%;
+    height: 21px;
+    background: #bed6de;
+    padding: 1em;
+  }
+  .error-message {
+    color: red;
+    font-weight: bold;
+    margin-top: 10px;
+    width: 100%;
+    height: 21px;
+    background: #bed6de;
+    padding: 1em;
+  }
+</style>

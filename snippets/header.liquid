@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Arial', sans-serif;
+    }
+
+    .site-header {
+      background-color: #f5f5f5;
+      padding: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .site-header h1 {
+      margin: 0;
+    }
+    
+    .count {
+      color: black;
+          font-weight: bolder;
+    }
+
+    .header-items {
+      display: flex;
+    }
+
+    .header-item {
+      margin-right: 20px;
+    }
+
+    .header-item a {
+      text-decoration: none;
+      color: #333;
+      display: flex;
+      align-items: center;
+    }
+
+    .header-item svg {
+      width: 24px;
+      height: 24px;
+      margin-right: 8px;
+    }
+
+    .main-menu {
+      display: flex;
+    }
+
+    .main-menu a {
+      margin-right: 20px;
+      text-decoration: none;
+      color: #333;
+    }
+
+    @media (max-width: 767px) {
+      .site-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .header-items {
+        margin-top: 15px;
+      }
+
+      .header-item {
+        margin-right: 0;
+        margin-bottom: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <h1>{{ shop.name }}</h1>
+
+
+  <div class="main-menu">
+    <!-- Include main menu -->
+    {% include 'main-menu' %}
+  </div>
+
+  <div class="header-items">
+    <div class="header-item">
+      <a href="/account" aria-label="Account" data-title="Profile" class="tooltip expand">
+        <span>
+          <svg width="24px" height="24px" aria-hidden="true" focusable="false" role="presentation" viewBox="0 0 24 24">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        </span>
+      </a>
+      
+    </div>
+
+    <div class="header-item">
+      <a href="/cart" aria-label="Cart" data-title="Cart" class="tooltip expand">
+        <span>
+          <svg width="24px" height="24px" viewBox="0 -2 37 35" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+            <g transform="translate(0.500000, 0.500000)" stroke="none" fill="currentColor" fill-rule="nonzero">
+              <path d="M0.2,11 L9.5,29 L26.4,29 L35.7,11 L0.2,11 Z M24.5,26 L11.5,26 L4.8,14 L31.2,14 L24.5,26 L24.5,26 Z M18.5,3 C22.7,3 25.5,6.3 25.5,8.5 L28.5,8.5 C28.5,4.5 24.2,0 18.5,0 C12.8,0 8.5,4.5 8.5,8.5 L11.5,8.5 C11.5,6.3 14.3,3 18.5,3 Z"></path>
+            </g>
+          </svg>
+        </span>
+        <span class="count" id="productCount">0</span>
+      </a>
+    </div>
+  </div>
+</header>
+
+</body>
+</html>
